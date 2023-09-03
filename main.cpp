@@ -34,7 +34,7 @@ vector<T> generating(int min, int max, int count){
     for(int i = 0; i < count; i++){
         v.push_back((T)(rand()) / RAND_MAX * (max - min) + min);
     }
-    show<float>(v);
+    //show<float>(v);
     cout << endl;
     return v;
 }
@@ -57,7 +57,7 @@ vector<vector<T>> splittingUp(vector<T> &v, int window, int threadsCount){
     for(int i = 0; i < threadsCount; i++){
         vector<T> n(minV, maxV);
         vect.push_back(n);
-        show<T>(n);
+        //show<T>(n);
         cout << endl;
         n.clear();
         minV = maxV;
@@ -92,25 +92,25 @@ vector<vector<T>> threads(vector<vector<T>> &vect, int threadsCount, int window)
 
 int main(){
     //Генерация входного массива данных
-    vector<float> v = generating<float>(1, 20, 50);
+    vector<double> v = generating<double>(1, 20, 1000000);
 
     //засекаем время старта алгоритма
-    unsigned int startTime = clock();
+    clock_t startTime = clock();
 
     //Распараллеливание
-    int window = 4;//окно усреднения
+    int window = 128;//окно усреднения
     int threadsCount = 4;//количество потоков
-    vector<vector<float>> vect = splittingUp<float>(v, window, threadsCount);//массив для разделения вектора на n частей
-    vector<vector<float>> res = threads<float>(vect, threadsCount, window);
-    
+    vector<vector<double>> vect = splittingUp<double>(v, window, threadsCount);//массив для разделения вектора на n частей
+    vector<vector<double>> res = threads<double>(vect, threadsCount, window);
+
     //засекаем время окончания алгоритма
-    unsigned int endTime = clock();
-    unsigned int resultTime = endTime - startTime;
+    clock_t endTime = clock();
+    clock_t resultTime = endTime - startTime;
     cout << "/////////////////////" << endl;
     for(int i = 0; i < res.size(); i++){
-        show(res[i]);
+        //show(res[i]);
     }
     cout << "/////////////////////" << endl;
-    cout << "Время работы " << resultTime << " мс." << endl;
+    cout << "Время работы " << ((double)resultTime) / CLOCKS_PER_SEC << " с" << endl;
     return 0;
 }
