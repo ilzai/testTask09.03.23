@@ -3,11 +3,8 @@
 #include <ctime>
 #include <thread>
 #include <valarray>
-#include <mutex>
 
 using namespace std;
-
-mutex m;
 
 template<typename T>
 void calc(const vector<T> &nums, vector<T> &vect, int window){
@@ -31,66 +28,81 @@ void show(vector<T> &nums){
     }
 }
 
-int main(){
-    //Генерация входного массива данных
-    vector<float> v;
-    srand(time(0));
-    int min = 1;
-    int max = 100;
-    int count = 53;//количество входных данных
+template<typename T>
+vector<T> generating(int min, int max, int count){
+    vector<T> v;
     for(int i = 0; i < count; i++){
-        v.push_back((float)(rand()) / RAND_MAX * (max - min) + min);
+        v.push_back((T)(rand()) / RAND_MAX * (max - min) + min);
     }
     show<float>(v);
     cout << endl;
+    return v;
+}
 
-    //засекаем время старта алгоритма
-    unsigned int startTime = clock();
-
-    //Распараллеливание
-    vector<vector<float>> vect;//массив для разделения вектора на n частей
-
-    int window = 4;//окно усреднения
+//Разбиение массива на подмассивы для каждого потока
+template<typename T>
+vector<vector<T>> splittingUp(vector<T> &v, int window, int threadsCount){
+    vector<vector<T>> vect;
     int b;
     auto minV = v.cbegin();
     auto maxV = v.cbegin();
-    if ((v.size() / 4 + 1) % window == 0){
-        maxV = v.cbegin() + v.size() / 4 + 1;
+    if ((v.size() / threadsCount + 1) % window == 0){
+        maxV = v.cbegin() + v.size() / threadsCount + 1;
     }else{
-        b = (v.size() / 4 + 1) % window;
-        maxV = v.cbegin() + v.size() / 4 + 1 - b;
+        b = (v.size() / threadsCount + 1) % window;
+        maxV = v.cbegin() + v.size() / threadsCount + 1 - b;
     }
     
-    //массив делится на 4 части, по одной части на каждый поток
-    for(int i = 0; i < 4; i++){
-        vector<float> n(minV, maxV);
+    //массив делится на n частей, по одной части на каждый поток
+    for(int i = 0; i < threadsCount; i++){
+        vector<T> n(minV, maxV);
         vect.push_back(n);
-        show<float>(n);
+        show<T>(n);
         cout << endl;
         n.clear();
         minV = maxV;
         if (i != 2) maxV = maxV + (v.size() / 4 + 1 - b);
         else(maxV = v.end());
     }
+    return vect;
+}
 
-    vector<thread*> th(4, nullptr);//массив потоков
-    vector<vector<float>> res;//массив результатов
+template<typename T>
+vector<vector<T>> threads(vector<vector<T>> &vect, int threadsCount, int window){
+    vector<thread*> th(threadsCount, nullptr);//массив потоков
+    vector<vector<T>> res;//массив результатов
 
     //инициализация массива результатов
-    for (int i = 0; i < 4; i++){
-        vector<float> temp;
+    for (int i = 0; i < threadsCount; i++){
+        vector<T> temp;
         res.push_back(temp);
     }
     
-    
-    for(int i = 0; i < 4; i++){
-        th[i] = new thread(calc<float>, std::ref(vect[i]), std::ref(res[i]), window);
+    //пулл потоков
+    for(int i = 0; i < threadsCount; i++){
+        th[i] = new thread(calc<T>, std::ref(vect[i]), std::ref(res[i]), window);
     }
 
-    for(int i = 0; i < 4; i++){
+    for(int i = 0; i < threadsCount; i++){
         th[i]->join();
     }
 
+    return res;
+}
+
+int main(){
+    //Генерация входного массива данных
+    vector<float> v = generating<float>(1, 20, 50);
+
+    //засекаем время старта алгоритма
+    unsigned int startTime = clock();
+
+    //Распараллеливание
+    int window = 4;//окно усреднения
+    int threadsCount = 4;//количество потоков
+    vector<vector<float>> vect = splittingUp<float>(v, window, threadsCount);//массив для разделения вектора на n частей
+    vector<vector<float>> res = threads<float>(vect, threadsCount, window);
+    
     //засекаем время окончания алгоритма
     unsigned int endTime = clock();
     unsigned int resultTime = endTime - startTime;
